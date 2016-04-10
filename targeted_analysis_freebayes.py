@@ -4,10 +4,29 @@ from subprocess import call
 import subprocess
 import csv
 import shutil
+import sys, getopt
+import getopt
+import sys
 
 sample_list_path = 's3://takomaticsdata/targeted_dev_sample_files/GS_Samples_Short.csv'
 target_region_path = 's3://takomaticsdata/targeted_dev_sample_files/GS_Panel.bed'
 parent_path = os.path.dirname(sample_list_path)
+
+#Get instance id
+current_instance_id = call("wget -q -O - http://instance-data/latest/meta-data/instance-id", shell = True)
+
+opt_list = sys.argv[1:]
+#If no sysarg apart from filename, will fail
+try:
+    opts, args = getopt.getopt(opt_list,"s","shutdown")
+except getopt.GetoptError:
+    print 'Bad inputs'
+    quit()    
+
+shutdown_flag = False
+for opt, arg in opts:
+    if opt in ("-s", "--shutdown"):
+        shutdown_flag = True
 
 #Get reference sequences
 if not os.path.isfile("/home/ec2-user/ref/hs37d5.fa.gz"):
@@ -72,11 +91,12 @@ for line in sample_list:
         command = "docker run --rm=true -v /home/ec2-user:/home wengkhong/speedseq code/speedseq/bin/speedseq align -o /home/" + sample_name + "/" + sample_name + " -R \"@RG\\tID:" + sample_name + "\\tSM:" + sample_name + "\\tLB:lib1\" -t16 -T /home/" + sample_name + "/" + sample_name + "_temp -M 10 /home/ref/hs37d5.fa /home/" + sample_name + "/" + os.path.basename(file1) + " /home/" + sample_name + "/" + os.path.basename(file2)
         print command
         call(command, shell = True)
-        exit()
+        #exit()
         print "Calling variants for " + sample_name
         command = "docker run --rm=true -v /home/ec2-user:/home wengkhong/speedseq /code/speedseq/bin/freebayes -f /home/ref/hs37d5.fa -b /home/" + sample_name + "/" + sample_name + ".bam -v /home/" + sample_name + "/" + sample_name + ".vcf"
         print command
         call(command, shell = True)
+        exit()
         print "Filtering variants for " + sample_name
         command = "docker run -it --rm=true -v /home/ec2-user/:/home wengkhong/vcflib vcflib/bin/vcffilter -f 'DP > 100 & QUAL > 30' /home/" + sample_name + "/" + sample_name + ".vcf > " + sample_name + ".filtered.vcf"
         print command
