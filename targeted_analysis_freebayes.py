@@ -5,6 +5,10 @@ import subprocess
 import csv
 import shutil
 
+sample_list_path = 's3://takomaticsdata/targeted_dev_sample_files/GS_Samples_Short.csv'
+target_region_path = 's3://takomaticsdata/targeted_dev_sample_files/GS_Panel.bed'
+parent_path = os.path.dirname(sample_list_path)
+
 #Get reference sequences
 if not os.path.isfile("/home/ec2-user/ref/hs37d5.fa.gz"):
 	command = "aws s3 cp s3://takomaticsdata/reference_genomes/hg19/ /home/ec2-user/ref --recursive --exclude \"*\" --include \"hs37d5*\""
@@ -20,12 +24,12 @@ call(command, shell = True)
 call("sudo pip install boto3", shell = True)
 import boto3
 #Get sample list and target region
-call("aws s3 cp s3://takomaticsdata/SarcomaPanel/Sarc_Samples.txt . ", shell = True)
-call("aws s3 cp s3://takomaticsdata/Sarcoma.bed . ", shell = True)
-with open('Sarc_Samples.txt','r') as tsv:
-	sample_list = [line.strip().split('\t') for line in tsv]
+call("aws s3 cp " + sample_list_path + " .", shell = True)
+call("aws s3 cp " + target_region_path + " .", shell = True)
+with open(os.path.basename(sample_list_path), 'r') as csv:
+	sample_list = [line.strip().split(',') for line in csv]
 
-print("Length of sample list: ", len(sample_list))
+print("Length of sample list: " + str(len(sample_list)-1))
 
 #This is a helper function to check if a file already exists in S3 or not. Primarily used to avoid reprocessing when resuming from incomplete runs
 def checkFileInS3(command):
@@ -45,7 +49,7 @@ for line in sample_list:
 	if file1 == "File1":
 		continue
 	#Check if output for this sample already exists. Skip if so
-	command = "aws s3 ls s3://takomaticsdata/SarcomaPanel/" + sample_name + "/" + sample_name + ".vcf"
+        command = "aws s3 ls " + parent_path + "/" + sample_name + "/" + sample_name + ".vcf"
 	if(checkFileInS3(command)):
 		print "Sample " + sample_name + " already done. Skipping"
 		continue
@@ -59,15 +63,16 @@ for line in sample_list:
         os.chdir(sample_name)
         #Get fastq files
         print "Getting fastq files"
-        command = "aws s3 cp s3://takomaticsdata/SarcomaPanel/" + file1 + " ."
+        command = "aws s3 cp " + file1 + " ."
         call(command, shell = True)
-        command = "aws s3 cp s3://takomaticsdata/SarcomaPanel/" + file2 + " ."
+        command = "aws s3 cp " + file2 + " ."
         call(command, shell = True)
 	#Align and call variants
         print "Aligning for " + sample_name
-        command = "docker run --rm=true -v /home/ec2-user:/home wengkhong/speedseq code/speedseq/bin/speedseq align -o /home/" + sample_name + "/" + sample_name + " -R \"@RG\\tID:" + sample_name + "\\tSM:" + sample_name + "\\tLB:lib1\" -t16 -T /home/" + sample_name + "/" + sample_name + "_temp -M 10 /home/ref/hs37d5.fa /home/" + sample_name + "/" + file1 + " /home/" + sample_name + "/" + file2
+        command = "docker run --rm=true -v /home/ec2-user:/home wengkhong/speedseq code/speedseq/bin/speedseq align -o /home/" + sample_name + "/" + sample_name + " -R \"@RG\\tID:" + sample_name + "\\tSM:" + sample_name + "\\tLB:lib1\" -t16 -T /home/" + sample_name + "/" + sample_name + "_temp -M 10 /home/ref/hs37d5.fa /home/" + sample_name + "/" + os.path.basename(file1) + " /home/" + sample_name + "/" + os.path.basename(file2)
         print command
         call(command, shell = True)
+        exit()
         print "Calling variants for " + sample_name
         command = "docker run --rm=true -v /home/ec2-user:/home wengkhong/speedseq /code/speedseq/bin/freebayes -f /home/ref/hs37d5.fa -b /home/" + sample_name + "/" + sample_name + ".bam -v /home/" + sample_name + "/" + sample_name + ".vcf"
         print command
