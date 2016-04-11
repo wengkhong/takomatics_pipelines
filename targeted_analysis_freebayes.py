@@ -15,10 +15,12 @@ parent_path = os.path.dirname(sample_list_path)
 #Get instance id
 current_instance_id = call("wget -q -O - http://instance-data/latest/meta-data/instance-id", shell = True)
 
+min_depth = 100
+min_qual  = 30
 opt_list = sys.argv[1:]
 #If no sysarg apart from filename, will fail
 try:
-    opts, args = getopt.getopt(opt_list,"s","shutdown")
+    opts, args = getopt.getopt(opt_list,"sqd",["shutdown", "min_qual", "min_depth"])
 except getopt.GetoptError:
     print 'Bad inputs'
     quit()    
@@ -27,6 +29,10 @@ shutdown_flag = False
 for opt, arg in opts:
     if opt in ("-s", "--shutdown"):
         shutdown_flag = True
+    elif opt in ("-q", "--min_qual"):
+        min_qual = arg
+    elif opt in ("-d", "--min_depth"):
+        min_depth = arg
 
 #Get reference sequences
 if not os.path.isfile("/home/ec2-user/ref/hs37d5.fa.gz"):
@@ -93,24 +99,25 @@ for line in sample_list:
         call(command, shell = True)
         #exit()
         print "Calling variants for " + sample_name
-        command = "docker run --rm=true -v /home/ec2-user:/home wengkhong/speedseq /code/speedseq/bin/freebayes -f /home/ref/hs37d5.fa -b /home/" + sample_name + "/" + sample_name + ".bam -v /home/" + sample_name + "/" + sample_name + ".vcf"
+        command = "docker run --rm=true -v /home/ec2-user:/home wengkhong/freebayes freebayes -f /home/ref/hs37d5.fa -b /home/" + sample_name + "/" + sample_name + ".bam -v /home/" + sample_name + "/" + sample_name + ".vcf --target /home/" + os.path.basename(target_region_path)
         print command
         call(command, shell = True)
-        exit()
+        #exit()
         print "Filtering variants for " + sample_name
-        command = "docker run -it --rm=true -v /home/ec2-user/:/home wengkhong/vcflib vcflib/bin/vcffilter -f 'DP > 100 & QUAL > 30' /home/" + sample_name + "/" + sample_name + ".vcf > " + sample_name + ".filtered.vcf"
+        command = "docker run -it --rm=true -v /home/ec2-user/:/home wengkhong/vcflib vcflib/bin/vcffilter -f 'DP >" + str(min_depth - 1) + " & QUAL > " + str(min_qual - 1) + "' /home/" + sample_name + "/" + sample_name + ".vcf > " + sample_name + ".filtered.vcf"
         print command
         call(command, shell = True)
         print "Getting variants in target region"
-        command = "docker run --rm=true -v /home/ec2-user:/home wengkhong/vcflib bedtools intersect -a /home/" + sample_name + "/" + sample_name + ".filtered.vcf -b /home/Sarcoma.bed > " + sample_name + ".filtered.target.vcf"
+        command = "docker run --rm=true -v /home/ec2-user:/home wengkhong/vcflib bedtools intersect -a /home/" + sample_name + "/" + sample_name + ".filtered.vcf -b /home/" + os.path.basename(target_region_path) + " > " + sample_name + ".filtered.target.vcf"
         print command
         call(command, shell = True)
 	#Upload results
         print "Uploading results for " + sample_name
-        command = " aws s3 cp . s3://takomaticsdata/SarcomaPanel/" + sample_name + " --recursive --exclude \"*discordants*\" --exclude \"*splitters*\" --exclude \"*fq.gz\""
+        command = " aws s3 cp . " + parent_path + "/" + sample_name + " --recursive --exclude \"*discordants*\" --exclude \"*splitters*\" --exclude \"*fq.gz\" --exclude \"*fastq*\""
         call(command, shell = True)
 	#Delete folder
         os.chdir('..')
         print "Cleaning up folder for " + sample_name
         shutil.rmtree(sample_name)
         #break
+        quit()
