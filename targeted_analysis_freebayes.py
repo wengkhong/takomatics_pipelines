@@ -9,7 +9,7 @@ import getopt
 import sys
 
 sample_list_path = 's3://takomaticsdata/targeted_dev_sample_files/GS_Samples_Short.csv'
-target_region_path = 's3://takomaticsdata/targeted_dev_sample_files/GS_Panel.bed'
+target_region_path = 's3://takomaticsdata/targeted_dev_sample_files/GS_Panel_Sorted_Merged.bed'
 parent_path = os.path.dirname(sample_list_path)
 
 #Get instance id
