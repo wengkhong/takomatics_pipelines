@@ -15,7 +15,7 @@ parent_path = os.path.dirname(sample_list_path)
 #Get instance id
 current_instance_id = call("wget -q -O - http://instance-data/latest/meta-data/instance-id", shell = True)
 
-min_depth = 100
+min_depth = 20
 min_qual  = 30
 num_cores = 16
 sambamba_mem = 10
@@ -55,6 +55,14 @@ call(command, shell = True)
 #Get Boto3. This is not currently in use but may be in the future
 call("sudo pip install boto3", shell = True)
 import boto3
+
+#Look for qualimap. If it's not there then download and unpack
+if(os.path.isfile('/home/ec2-user/qualimap_v2.2/qualimap')):
+    print("AOK")
+else:
+    call("wget https://bitbucket.org/kokonech/qualimap/downloads/qualimap_v2.2.zip", shell = True)
+    call("unzip qualimap_v2.2.zip", shell = True)
+
 #Get sample list and target region
 call("aws s3 cp " + sample_list_path + " .", shell = True)
 call("aws s3 cp " + target_region_path + " .", shell = True)
@@ -93,31 +101,44 @@ for line in sample_list:
             
 	#Goto folder
         os.chdir(sample_name)
+        
         #Get fastq files
         print "Getting fastq files"
         command = "aws s3 cp " + file1 + " ."
         call(command, shell = True)
         command = "aws s3 cp " + file2 + " ."
         call(command, shell = True)
-	#Align and call variants
+	
+        #Align and call variants
         print "Aligning for " + sample_name
         command = "docker run --rm=true -v /home/ec2-user:/home wengkhong/speedseq code/speedseq/bin/speedseq align -o /home/" + sample_name + "/" + sample_name + " -R \"@RG\\tID:" + sample_name + "\\tSM:" + sample_name + "\\tLB:lib1\" -t" + str(num_cores) + " -T /home/" + sample_name + "/" + sample_name + "_temp -M " + str(sambamba_mem) + " /home/ref/hs37d5.fa /home/" + sample_name + "/" + os.path.basename(file1) + " /home/" + sample_name + "/" + os.path.basename(file2)
         print command
         call(command, shell = True)
         #exit()
+        
         print "Calling variants for " + sample_name
         command = "docker run --rm=true -v /home/ec2-user:/home wengkhong/freebayes freebayes -f /home/ref/hs37d5.fa -b /home/" + sample_name + "/" + sample_name + ".bam -v /home/" + sample_name + "/" + sample_name + ".vcf --target /home/" + os.path.basename(target_region_path)
         print command
         call(command, shell = True)
         #exit()
+        
         print "Filtering variants for " + sample_name
         command = "docker run -it --rm=true -v /home/ec2-user/:/home wengkhong/vcflib vcflib/bin/vcffilter -f 'DP >" + str(min_depth - 1) + " & QUAL > " + str(min_qual - 1) + "' /home/" + sample_name + "/" + sample_name + ".vcf > " + sample_name + ".filtered.vcf"
         print command
         call(command, shell = True)
+            
         print "Getting variants in target region"
         command = "docker run --rm=true -v /home/ec2-user:/home wengkhong/vcflib bedtools intersect -a /home/" + sample_name + "/" + sample_name + ".filtered.vcf -b /home/" + os.path.basename(target_region_path) + " > " + sample_name + ".filtered.target.vcf"
         print command
         call(command, shell = True)
+
+        #Run qualimap
+        print "Running qualimap"
+        command = "~/qualimap_v2.2/qualimap bamqc -bam /home" + sample_name + "/" + sample_name + ".bam -gff " + os.path.basename(target_region_path) + " -c"
+        print command
+        call(command, shell = True)
+
+
 	#Upload results
         print "Uploading results for " + sample_name
         command = " aws s3 cp . " + parent_path + "/" + sample_name + " --recursive --exclude \"*discordants*\" --exclude \"*splitters*\" --exclude \"*fq.gz\" --exclude \"*fastq*\""
