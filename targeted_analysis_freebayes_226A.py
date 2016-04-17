@@ -132,6 +132,12 @@ for line in sample_list:
         print command
         call(command, shell = True)
 
+        #Add sample name to VCF
+        vcf_filename = sample_name + ".filtered.target.vcf"
+        rename_command = "awk 'BEGIN {OFS=\"\\t\"} {FS=\"\\t\"} {$7=\"" + sample_name + "\";print}' " + vcf_filename + " > " + sample_name + ".filtered.target.name.vcf"
+        print rename_command
+        call(rename_command, shell = True)
+
         #Run qualimap
         print "Running qualimap"
         #First, create 6 column BED file
