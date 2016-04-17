@@ -148,4 +148,7 @@ for line in sample_list:
         print "Cleaning up folder for " + sample_name
         shutil.rmtree(sample_name)
         #break
-        quit()
+        #quit()
+
+if(shutdown_flag):
+    call("shutdown -h now", shell = True)
