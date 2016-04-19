@@ -141,7 +141,7 @@ for line in sample_list:
         #Run qualimap
         print "Running qualimap"
         #First, create 6 column BED file
-        command = "awk -v OFS='\t' '{print $1,$2,$3,\".\",\".\",\".\"}' ~/" + os.path.basename(target_region_path) + " > bed6.txt"
+        command = "awk -v OFS='\t' '{print $1,$2,$3,\".\",\".\",\".\"}' ~/" + os.path.basename(target_region_path) + " > ~/bed6.txt"
         print command
         call(command, shell = True)
         command = "~/qualimap_v2.2/qualimap bamqc -bam ~/" + sample_name + "/" + sample_name + ".bam -gff ~/bed6.txt -c"
