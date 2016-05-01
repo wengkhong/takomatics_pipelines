@@ -19,11 +19,11 @@ min_depth = 20
 min_qual  = 30
 num_cores = 16
 sambamba_mem = 10
-
+qualimap_mem = '4G'
 opt_list = sys.argv[1:]
 #If no sysarg apart from filename, will fail
 try:
-    opts, args = getopt.getopt(opt_list,"sqdtm",["sambamba_mem", "num_cores", "shutdown", "min_qual", "min_depth"])
+    opts, args = getopt.getopt(opt_list,"sqdtm",["sambamba_mem", "num_cores", "shutdown", "min_qual", "min_depth","qualimap_mem"])
 except getopt.GetoptError:
     print 'Bad inputs'
     quit()    
@@ -40,6 +40,8 @@ for opt, arg in opts:
         num_cores = arg
     elif opt in ("-m", "--sambamba_mem"):
         sambamba_mem = arg
+    elif opt in ("--qualimap_mem"):
+        qualimap_mem = arg
 
 #Get reference sequences
 if not os.path.isfile("/home/ec2-user/ref/hs37d5.fa.gz"):
@@ -144,7 +146,7 @@ for line in sample_list:
         command = "awk -v OFS='\t' '{print $1,$2,$3,\".\",\".\",\".\"}' ~/" + os.path.basename(target_region_path) + " > ~/bed6.txt"
         print command
         call(command, shell = True)
-        command = "~/qualimap_v2.2/qualimap bamqc -bam ~/" + sample_name + "/" + sample_name + ".bam -gff ~/bed6.txt -c"
+        command = "~/qualimap_v2.2/qualimap bamqc --java-mem-size=" + qualimap_mem + " -bam ~/" + sample_name + "/" + sample_name + ".bam -gff ~/bed6.txt -c"
         print command
         call(command, shell = True)
 
@@ -160,4 +162,4 @@ for line in sample_list:
         #quit()
 
 if(shutdown_flag):
-    call("shutdown -h now", shell = True)
+    call("sudo shutdown -h now", shell = True)
