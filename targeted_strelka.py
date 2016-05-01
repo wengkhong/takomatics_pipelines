@@ -5,16 +5,46 @@ import subprocess
 import csv
 import shutil
 
+#Get instance id
+current_instance_id = call("wget -q -O - http://instance-data/latest/meta-data/instance-id", shell = True)
+
+min_depth = 20
+min_qual  = 30
+num_cores = 16
+sambamba_mem = 10
+
+opt_list = sys.argv[1:]
+#If no sysarg apart from filename, will fail
+try:
+    opts, args = getopt.getopt(opt_list,"sqdtm",["sambamba_mem", "num_cores", "shutdown", "min_qual", "min_depth"])
+except getopt.GetoptError:
+    print 'Bad inputs'
+    quit()
+
+shutdown_flag = False
+for opt, arg in opts:
+    if opt in ("-s", "--shutdown"):
+        shutdown_flag = True
+    elif opt in ("-q", "--min_qual"):
+        min_qual = arg
+    elif opt in ("-d", "--min_depth"):
+        min_depth = arg
+    elif opt in ("-t", "--num_cores"):
+        num_cores = arg
+    elif opt in ("-m", "--sambamba_mem"):
+        sambamba_mem = arg
+
 #Get reference sequences
 if not os.path.isfile("/home/ec2-user/ref/hs37d5.fa.gz"):
         command = "aws s3 cp s3://takomaticsdata/reference_genomes/hg19/ /home/ec2-user/ref --recursive --exclude \"*\" --include \"hs37d5*\""
         print(command)
         call(command, shell = True)
 
-
 command = "docker pull wengkhong/speedseq-manual"
 call(command, shell = True)
 command = "docker pull wengkhong/vcflib"
+call(command, shell = True)
+command = "docker pull wengkhong/strelka"
 call(command, shell = True)
 
 class sample_run:
