@@ -146,7 +146,7 @@ for line in sample_list:
         command = "awk -v OFS='\t' '{print $1,$2,$3,\".\",\".\",\".\"}' ~/" + os.path.basename(target_region_path) + " > ~/bed6.txt"
         print command
         call(command, shell = True)
-        command = "~/qualimap_v2.2/qualimap bamqc --java-mem-size=" + qualimap_mem + " -bam ~/" + sample_name + "/" + sample_name + ".bam -gff ~/bed6.txt -c"
+        command = "~/qualimap_v2.2/qualimap bamqc -nt " + str(num_cores) + " --java-mem-size=" + qualimap_mem + " -bam ~/" + sample_name + "/" + sample_name + ".bam -gff ~/bed6.txt -c"
         print command
         call(command, shell = True)
 
