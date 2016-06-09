@@ -29,7 +29,7 @@ if(args.fraction):
 
 print "Subsampling BAM file"
 command = sambamba_path + "sambamba view " + input_bamfile + " -o " + os.path.splitext(input_bamfile)[0] + ".subsampled.bam -fbam -t" + str(sambamba_threads) + " -s" + str(sambamba_fraction) + " -p" 
-print command
+print "Command: " + command
 #call(command, shell = True)
 
 
