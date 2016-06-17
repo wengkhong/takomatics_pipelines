@@ -14,6 +14,7 @@ input_bamfile = '0315-0051-NHC-SNJ.bam'
 sambamba_threads = 10
 sambamba_fraction = 0.1
 sambamba_path = '/data/public/tools/bin/'
+rscript_path = '/home/gmslwkg/takomatics_pipelines'
 
 parser = argparse.ArgumentParser()
 parser.add_argument("input_bamfile", help="BAM file")
@@ -44,11 +45,16 @@ command = sambamba_path + "sambamba view ../" + input_bamfile + " -o " + sample_
 print "Command: " + command
 call(command, shell = True)
 
-command = "Rscript --vanilla qdnaseq_workflow.R " + sample_name + ".subsampled.bam " + bins_path
+command = "Rscript --vanilla " + rscript_path + "/qdnaseq_workflow.R " + sample_name + ".subsampled.bam " + bins_path
+print "Command: " + command
+call(command, shell = True)
+
+#Consolidate segments using awk
+command = "cut -f2-5 " + sample_name + ".subsampled_segments.tsv | awk '{if(d==$4 && $1==a){newend=$3}else if(NR>2){print a\"\t\"b\"\t\"newend\"\t\"d}; {a=$1;b=$2;c=$3;d=$4;}}' > " + sample_name + ".subsampled_combined_segments.tsv"
 print "Command: " + command
 call(command, shell = True)
 
 #Delete subsampled BAM
-shutil.rm(sample_name + ".subsampled.bam")
+os.remove(sample_name + ".subsampled.bam")
 os.chdir('..')
 quit()
