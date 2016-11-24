@@ -3,7 +3,7 @@
 import sys, getopt, csv, re
 
 vcf_filename = "/home/gmslwkg/all.somatic.snvs.vcf"
-print("Hello World!\n")
+#print("Hello World!\n")
 
 chromosomes = {'1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','X','Y'}
 
@@ -14,6 +14,9 @@ def get_tier1(input_string):
 with open(vcf_filename, 'rb') as tsvin:
 	tsvin = csv.reader(tsvin, delimiter = '\t')
 	for row in tsvin:
+		if row[0][0] is "#":
+			print "\t".join(row)
+			continue
 		if row[0] not in chromosomes:
 			#print(row[0])
 			continue
@@ -43,8 +46,9 @@ with open(vcf_filename, 'rb') as tsvin:
 		tumor_vaf = float(float(sorted(tumor_counts)[2]) / float(tumor_depth))
 		if tumor_depth >= 30 and normal_depth >= 20 and tumor_vaf >= 0.05 and not re.search('QSS_ref',row[6]):
 			#print(str(sorted(tumor_counts)[2]) + " " + str(tumor_depth) + " " + str(tumor_vaf) + str(row))
-			print(row[7] + ";TAF=" + str(tumor_vaf))
+			row[7] = row[7] + ";VAF=" + "{0:.3f}".format(tumor_vaf) + ";TDP=" + str(tumor_depth) + ";NDP=" + str(normal_depth)
 			#print(str(tumor_depth) + " " + str(normal_depth) + " " + str(tumor_vaf))
+			print "\t".join(row)
 #def get_tier1(input_string):
 #	tier1_val = input_string.split(",")[0]
 #	return tier1_val
