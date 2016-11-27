@@ -1,11 +1,25 @@
 #!/usr/bin/python
 
-import sys, getopt, csv, re
+import sys, getopt, csv, re, argparse
 
 vcf_filename = "/home/gmslwkg/all.somatic.snvs.vcf"
-#print("Hello World!\n")
+vcf_filename = ''
+parser = argparse.ArgumentParser()
+#parser.add_argument('-i', '--ifile', dest = 'vcf_filename')
+parser.add_argument("-i", "--ifile", dest="vcf_filename", help = "Input file")
+args = parser.parse_args()
+print args.vcf_filename
+#sys.exit()
 
-chromosomes = {'1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','X','Y'}
+if args.vcf_filename:
+	vcf_filename = args.vcf_filename
+#else:
+
+chromosomes = []
+for i in range(1,23):
+	chromosomes.append(str(i))
+	chromosomes.append("chr" + str(i))
+chromosomes.extend(['X','Y','chrX','chrY'])
 
 def get_tier1(input_string):
         tier1_val = input_string.split(",")[0]
