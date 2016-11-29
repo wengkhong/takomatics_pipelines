@@ -1,0 +1,29 @@
+REFERENCE="/data/share/refs/hs37d5.fa"
+TARGET_REGIONS="/home/gmslwkg/SureSelect_V6_hs37d5.bed"
+LOG="pipeline.log"
+
+align = {
+	produce(myfile + ".bam"){
+	exec """
+		/data/apps/bwa mem -t32 $REFERENCE $input1 $input2 | /data/apps/sambamba view -t32 -S -f bam /dev/stdin | /data/apps/sambamba sort -t32 /dev/stdin -o $output.bam
+	"""}
+}
+
+markdup = {
+	produce(myfile + ".rmdup.bam"){
+		exec """
+			/data/apps/sambamba markdup -t32 $input.bam $output.bam
+		"""
+	}
+}
+
+freebayes = {
+	produce (myfile + ".vcf.gz"){
+		exec """
+			/data/apps/freebayes -f $REFERENCE -t $TARGET_REGIONS $input.bam | /data/apps/vcflib/bin/vcfallelicprimitives -kg | /data/apps/vt/vt normalize -q -r $REFERENCE - | /data/apps/vt/vt uniq - | gzip > $output.gz
+		"""
+	}
+}
+
+Bpipe.run {align + markdup + freebayes}
+
